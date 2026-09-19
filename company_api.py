@@ -93,7 +93,7 @@ _routes = {
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK)],
         description="Company website intelligence: metadata, contacts, social links and technology hints",
         mime_type="application/json",
-        resource="/v1/company",
+        resource=os.getenv("PUBLIC_URL", "https://auto-earner.onrender.com/v1/company"),
     )
 }
 payment_middleware(app, routes=_routes, server=_server)
