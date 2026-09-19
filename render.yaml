@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: company-intelligence-x402
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT company_api:app
+    healthCheckPath: /health
+    envVars:
+      - key: PAY_TO
+        sync: false
+      - key: PRICE_USDC
+        value: "0.01"
