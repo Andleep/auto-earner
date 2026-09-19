@@ -46,11 +46,11 @@ def extract(url):
     emails=sorted(set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",html)))[:20]
     socials={}
     pats={
-      "linkedin":r"https?://(?:www\\.)?linkedin\\.com/[^\\s\"'<>]+",
-      "twitter":r"https?://(?:www\\.)?(?:twitter\\.com|x\\.com)/[^\\s\"'<>]+",
-      "facebook":r"https?://(?:www\\.)?facebook\\.com/[^\\s\"'<>]+",
-      "instagram":r"https?://(?:www\\.)?instagram\\.com/[^\\s\"'<>]+",
-      "youtube":r"https?://(?:www\\.)?(?:youtube\\.com|youtu\\.be)/[^\\s\"'<>]+"
+      "linkedin":r"https?://(?:www\.)?linkedin\.com/[^\\s\"'<>]+",
+      "twitter":r"https?://(?:www\.)?(?:twitter\.com|x\.com)/[^\\s\"'<>]+",
+      "facebook":r"https?://(?:www\.)?facebook\.com/[^\\s\"'<>]+",
+      "instagram":r"https?://(?:www\.)?instagram\.com/[^\\s\"'<>]+",
+      "youtube":r"https?://(?:www\.)?(?:youtube\.com|youtu\.be)/[^\\s\"'<>]+"
     }
     for k,p in pats.items():
         v=sorted(set(re.findall(p,html,re.I)))[:5]
@@ -90,7 +90,7 @@ _server.register(NETWORK, ExactEvmServerScheme())
 print("X402_BOOT_4", flush=True)
 _routes = {
     "POST /v1/company": RouteConfig(
-        accepts=PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK),
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK)],
         description="Company website intelligence: metadata, contacts, social links and technology hints",
         mime_type="application/json",
         resource="/v1/company",
