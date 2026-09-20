@@ -3,3 +3,4 @@ gunicorn==23.0.0
 x402[flask,evm]==2.23.0
 
 httpx>=0.27,<1
+dnspython>=2.7,<3

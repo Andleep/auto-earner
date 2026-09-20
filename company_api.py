@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import urllib.request, urllib.parse, re, time, socket, ipaddress, os, threading, ssl
+import dns.resolver
 from html import unescape
 from x402.http import HTTPFacilitatorClientSync, PaymentOption
 from x402.http.middleware.flask import payment_middleware
@@ -13,6 +14,7 @@ TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "10"))
 PRICE = os.getenv("PRICE_USDC", "0.01")
 BATCH_PRICE = os.getenv("BATCH_PRICE_USDC", "0.03")
 DOMAIN_PRICE = os.getenv("DOMAIN_PRICE_USDC", "0.03")
+FULL_PRICE = os.getenv("FULL_PRICE_USDC", "0.10")
 _cache = {}
 _lock = threading.Lock()
 
@@ -93,21 +95,43 @@ def extract(url):
             _cache.pop(next(iter(_cache)))
     return result
 
+def dns_intelligence(host):
+    out = {"A": [], "AAAA": [], "NS": [], "MX": [], "TXT": [], "CNAME": [], "SPF": [], "DMARC": [], "errors": []}
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 3
+    resolver.lifetime = 4
+    for record in ("A", "AAAA", "NS", "MX", "TXT", "CNAME"):
+        try:
+            answers = resolver.resolve(host, record)
+            vals = []
+            for a in answers:
+                vals.append(str(a).strip().rstrip("."))
+            out[record] = sorted(set(vals))[:30]
+        except Exception as e:
+            out["errors"].append(record + ":" + type(e).__name__)
+    out["SPF"] = [x for x in out["TXT"] if x.lower().startswith("v=spf1")]
+    try:
+        answers = resolver.resolve("_dmarc." + host, "TXT")
+        out["DMARC"] = sorted(set(str(a).strip() for a in answers))[:10]
+    except Exception as e:
+        out["errors"].append("DMARC:" + type(e).__name__)
+    return out
+
 @app.get("/")
 def home():
     return jsonify(
         service="Auto-Earner Company Intelligence",
-        version="2.1",
+        version="3.0",
         status="live",
-        paid_endpoints=["/v1/company", "/v1/company/batch"],
-        pricing={"single_usdc": PRICE, "batch_up_to_5_usdc": BATCH_PRICE},
+        paid_endpoints=["/v1/company", "/v1/company/batch", "/v1/domain-intelligence", "/v1/full-intelligence"],
+        pricing={"single_usdc": PRICE, "batch_up_to_5_usdc": BATCH_PRICE, "domain_usdc": DOMAIN_PRICE, "full_usdc": FULL_PRICE},
         currency="USDC",
         network="Base"
     )
 
 @app.get("/health")
 def health():
-    return jsonify(ok=True, service="company-intelligence", version="2.1")
+    return jsonify(ok=True, service="company-intelligence", version="3.0")
 
 @app.post("/v1/company")
 def company():
@@ -139,13 +163,36 @@ def company_batch():
                     requested=len(urls), completed=len(results),
                     generated_at=int(time.time()))
 
+@app.post("/v1/full-intelligence")
+def full_intelligence():
+    data = request.get_json(silent=True) or {}
+    url = str(data.get("url", "")).strip()
+    if not url:
+        return jsonify(error="url_required"), 400
+    try:
+        parsed = urllib.parse.urlparse(safe_url(url))
+        host = parsed.hostname
+        base = domain_intelligence_endpoint().get_json()
+        result = base.get("result", {}) if isinstance(base, dict) else {}
+        result["dns"] = dns_intelligence(host)
+        result["report_type"] = "full_company_domain_due_diligence"
+        result["risk_signals"] = {
+            "missing_https": parsed.scheme != "https",
+            "missing_dmarc": not bool(result["dns"].get("DMARC")),
+            "missing_spf": not bool(result["dns"].get("SPF")),
+            "missing_security_headers": [k for k in ("strict-transport-security","content-security-policy","x-content-type-options","x-frame-options") if k not in result.get("domain",{}).get("security_headers",{})]
+        }
+        return jsonify(ok=True,result=result,generated_at=int(time.time()))
+    except Exception as e:
+        return jsonify(ok=False,error=str(e)[:120]),400
+
 @app.get("/openapi.json")
 def openapi():
-    return jsonify({"openapi":"3.0.3","info":{"title":"Auto-Earner Agent Intelligence API","version":"3.0"},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{"/v1/company":{"post":{"summary":"Company intelligence"}},"/v1/company/batch":{"post":{"summary":"Batch company intelligence"}},"/v1/domain-intelligence":{"post":{"summary":"Full domain intelligence"}}}})
+    return jsonify({"openapi":"3.0.3","info":{"title":"Auto-Earner Agent Intelligence API","version":"3.1"},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{"/v1/company":{"post":{"summary":"Company intelligence"}},"/v1/company/batch":{"post":{"summary":"Batch company intelligence"}},"/v1/domain-intelligence":{"post":{"summary":"Domain intelligence with DNS, TLS and security"}},"/v1/full-intelligence":{"post":{"summary":"Full company and domain due diligence"}}}})
 
 @app.get("/llms.txt")
 def llms():
-    return "# Auto-Earner Agent Intelligence\n\nCompany and domain intelligence for AI agents.\n\n- POST /v1/company — $0.01\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — full domain report, $0.03\n- GET /openapi.json — machine-readable API description\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
+    return "# Auto-Earner Agent Intelligence\n\nMachine-payable company and domain due diligence for AI agents.\n\n- POST /v1/company — $0.01 quick company intelligence\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — DNS, TLS, security and agent-accessibility report, $0.03\n- POST /v1/full-intelligence — full company/domain due diligence with risk signals, $0.10\n- GET /openapi.json — machine-readable API description\n- GET /.well-known/x402-catalog.json — x402 resource catalogue\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
 
 @app.post("/v1/domain-intelligence")
 def domain_intelligence_endpoint():
@@ -177,13 +224,13 @@ def domain_intelligence_endpoint():
                     files[path] = resp.status == 200
             except Exception:
                 files[path] = False
-        return jsonify(ok=True,result={"company":extract(url),"domain":{"host":host,"addresses":addresses[:20],"http_status":status,"security_headers":headers,"tls":tls,"public_files":files}},generated_at=int(time.time()))
+        return jsonify(ok=True,result={"company":extract(url),"domain":{"host":host,"addresses":addresses[:20],"dns":dns_intelligence(host),"http_status":status,"security_headers":headers,"tls":tls,"public_files":files}},generated_at=int(time.time()))
     except Exception as e:
         return jsonify(ok=False,error=str(e)[:120]),400
 
 @app.get("/.well-known/x402-catalog.json")
 def x402_catalog():
-    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"}])
+    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":FULL_PRICE,"network":"eip155:8453","currency":"USDC"}])
 
 PAY_TO = os.getenv("PAY_TO", "")
 NETWORK = "eip155:8453"
@@ -214,6 +261,12 @@ _routes = {
         description="Batch company website intelligence for up to 5 URLs",
         mime_type="application/json",
         resource=os.getenv("PUBLIC_URL_BATCH", "https://auto-earner.onrender.com/v1/company/batch"),
+    ),
+    "POST /v1/full-intelligence": RouteConfig(
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + FULL_PRICE, network=NETWORK)],
+        description="Full company and domain due-diligence report with DNS, TLS, security headers and risk signals",
+        mime_type="application/json",
+        resource=os.getenv("PUBLIC_URL_FULL", "https://auto-earner.onrender.com/v1/full-intelligence"),
     )
 }
 payment_middleware(app, routes=_routes, server=_server)
