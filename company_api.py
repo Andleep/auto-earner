@@ -7,6 +7,7 @@ from x402.http.middleware.flask import payment_middleware
 from x402.http.types import RouteConfig
 from x402.mechanisms.evm.exact import ExactEvmServerScheme
 from x402.server import x402ResourceServerSync
+from x402.extensions.bazaar import declare_discovery_extension, OutputConfig, bazaar_resource_server_extension
 
 app = Flask(__name__)
 MAX_BYTES = int(os.getenv("MAX_BYTES", "500000"))
@@ -14,7 +15,7 @@ TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "10"))
 PRICE = os.getenv("PRICE_USDC", "0.01")
 BATCH_PRICE = os.getenv("BATCH_PRICE_USDC", "0.03")
 DOMAIN_PRICE = os.getenv("DOMAIN_PRICE_USDC", "0.03")
-FULL_PRICE = os.getenv("FULL_PRICE_USDC", "0.10")
+FULL_PRICE = os.getenv("FULL_PRICE_USDC", "0.05")
 _cache = {}
 _lock = threading.Lock()
 
@@ -94,6 +95,14 @@ def extract(url):
         if len(_cache) > 500:
             _cache.pop(next(iter(_cache)))
     return result
+
+def bazaar_ext(kind):
+    schemas = {
+        "company": ({"url": "https://example.com"}, {"properties": {"url": {"type": "string", "format": "uri", "description": "Public company website URL to analyze"}}, "required": ["url"]}),
+        "batch": ({"urls": ["https://example.com", "https://example.org"]}, {"type": "object", "properties": {"urls": {"type": "array", "maxItems": 5, "items": {"type": "string", "format": "uri"}}}, "required": ["urls"]}),
+    }
+    sample, schema = schemas["batch" if kind == "batch" else "company"]
+    return declare_discovery_extension(input=sample, input_schema=schema, body_type="json", output=OutputConfig(example={"ok": True, "result": {}}))
 
 def dns_intelligence(host):
     out = {"A": [], "AAAA": [], "NS": [], "MX": [], "TXT": [], "CNAME": [], "SPF": [], "DMARC": [], "errors": []}
@@ -196,7 +205,7 @@ def openapi():
         "/v1/company":paid("0.01","Company Intelligence",url_schema),
         "/v1/company/batch":paid("0.03","Batch Company Intelligence",batch_schema),
         "/v1/domain-intelligence":paid("0.03","Domain Intelligence",url_schema),
-        "/v1/full-intelligence":paid("0.10","Full Company Domain Due Diligence",url_schema)
+        "/v1/full-intelligence":paid("0.05","Full Company Domain Due Diligence",url_schema)
     },"components":{"schemas":{"PaymentRequired":{"type":"object"}},"securitySchemes":{"x402":{"type":"apiKey","in":"header","name":"PAYMENT-SIGNATURE"}}},"x-discovery":{"ownershipProofs":[PAY_TO]}})
 
 @app.get("/.well-known/x402")
@@ -205,7 +214,7 @@ def well_known_x402():
         {"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":"$0.01","network":"eip155:8453","asset":"USDC","description":"Quick company website intelligence"},
         {"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"Batch intelligence for up to five company URLs"},
         {"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"DNS, TLS, security and agent-accessibility intelligence"},
-        {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.10","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"}
+        {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.05","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"}
     ]}), 200
 
 @app.get("/.well-known/agent.json")
@@ -214,7 +223,7 @@ def agent_card():
 
 @app.get("/llms.txt")
 def llms():
-    return "# Auto-Earner Agent Intelligence\n\nMachine-payable company and domain due diligence for AI agents.\n\n- POST /v1/company — $0.01 quick company intelligence\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — DNS, TLS, security and agent-accessibility report, $0.03\n- POST /v1/full-intelligence — full company/domain due diligence with risk signals, $0.10\n- GET /openapi.json — machine-readable API description\n- GET /.well-known/x402-catalog.json — x402 resource catalogue\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
+    return "# Auto-Earner Agent Intelligence\n\nMachine-payable company and domain due diligence for AI agents.\n\n- POST /v1/company — $0.01 quick company intelligence\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — DNS, TLS, security and agent-accessibility report, $0.03\n- POST /v1/full-intelligence — full company/domain due diligence with risk signals, $0.05\n- GET /openapi.json — machine-readable API description\n- GET /.well-known/x402-catalog.json — x402 resource catalogue\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
 
 @app.post("/v1/domain-intelligence")
 def domain_intelligence_endpoint():
@@ -264,30 +273,43 @@ print("X402_BOOT_2", flush=True)
 _server = x402ResourceServerSync(_facilitator)
 print("X402_BOOT_3", flush=True)
 _server.register(NETWORK, ExactEvmServerScheme())
+_server.register_extension(bazaar_resource_server_extension)
 print("X402_BOOT_4", flush=True)
 _routes = {
     "POST /v1/company": RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK)],
         description="Company website intelligence: metadata, contacts, social links and technology hints",
+        extensions=bazaar_ext("company"),
         mime_type="application/json",
+        service_name="Company Intelligence",
+        tags=["company","lead-enrichment","due-diligence","domain"],
         resource=os.getenv("PUBLIC_URL", "https://auto-earner.onrender.com/v1/company"),
     ),
     "POST /v1/domain-intelligence": RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DOMAIN_PRICE, network=NETWORK)],
         description="Full company and domain due-diligence intelligence including DNS, TLS, security headers and agent accessibility",
+        extensions=bazaar_ext("company"),
         mime_type="application/json",
+        service_name="Company Intelligence",
+        tags=["company","lead-enrichment","due-diligence","domain"],
         resource=os.getenv("PUBLIC_URL_DOMAIN", "https://auto-earner.onrender.com/v1/domain-intelligence"),
     ),
     "POST /v1/company/batch": RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + BATCH_PRICE, network=NETWORK)],
         description="Batch company website intelligence for up to 5 URLs",
+        extensions=bazaar_ext("batch"),
         mime_type="application/json",
+        service_name="Company Intelligence",
+        tags=["company","lead-enrichment","due-diligence","domain"],
         resource=os.getenv("PUBLIC_URL_BATCH", "https://auto-earner.onrender.com/v1/company/batch"),
     ),
     "POST /v1/full-intelligence": RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + FULL_PRICE, network=NETWORK)],
         description="Full company and domain due-diligence report with DNS, TLS, security headers and risk signals",
+        extensions=bazaar_ext("company"),
         mime_type="application/json",
+        service_name="Company Intelligence",
+        tags=["company","lead-enrichment","due-diligence","domain"],
         resource=os.getenv("PUBLIC_URL_FULL", "https://auto-earner.onrender.com/v1/full-intelligence"),
     )
 }
