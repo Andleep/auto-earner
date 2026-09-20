@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import urllib.request, urllib.parse, re, time, socket, ipaddress, os, threading
+import urllib.request, urllib.parse, re, time, socket, ipaddress, os, threading, ssl
 from html import unescape
 from x402.http import HTTPFacilitatorClientSync, PaymentOption
 from x402.http.middleware.flask import payment_middleware
@@ -12,6 +12,7 @@ MAX_BYTES = int(os.getenv("MAX_BYTES", "500000"))
 TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "10"))
 PRICE = os.getenv("PRICE_USDC", "0.01")
 BATCH_PRICE = os.getenv("BATCH_PRICE_USDC", "0.03")
+DOMAIN_PRICE = os.getenv("DOMAIN_PRICE_USDC", "0.03")
 _cache = {}
 _lock = threading.Lock()
 
@@ -138,6 +139,52 @@ def company_batch():
                     requested=len(urls), completed=len(results),
                     generated_at=int(time.time()))
 
+@app.get("/openapi.json")
+def openapi():
+    return jsonify({"openapi":"3.0.3","info":{"title":"Auto-Earner Agent Intelligence API","version":"3.0"},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{"/v1/company":{"post":{"summary":"Company intelligence"}},"/v1/company/batch":{"post":{"summary":"Batch company intelligence"}},"/v1/domain-intelligence":{"post":{"summary":"Full domain intelligence"}}}})
+
+@app.get("/llms.txt")
+def llms():
+    return "# Auto-Earner Agent Intelligence\n\nCompany and domain intelligence for AI agents.\n\n- POST /v1/company — $0.01\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — full domain report, $0.03\n- GET /openapi.json — machine-readable API description\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
+
+@app.post("/v1/domain-intelligence")
+def domain_intelligence_endpoint():
+    data = request.get_json(silent=True) or {}
+    url = str(data.get("url", "")).strip()
+    if not url:
+        return jsonify(error="url_required"), 400
+    try:
+        parsed = urllib.parse.urlparse(safe_url(url))
+        host = parsed.hostname
+        addresses = sorted(set(i[4][0] for i in socket.getaddrinfo(host, None)))
+        headers = {}
+        req = urllib.request.Request(url, headers={"User-Agent":"Auto-Earner-Domain-Intelligence/3.0"})
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            headers = {k.lower(): v for k,v in resp.headers.items() if k.lower() in {"server","strict-transport-security","content-security-policy","x-content-type-options","x-frame-options","referrer-policy","permissions-policy"}}
+            status = resp.status
+        tls = {}
+        try:
+            ctx = ssl.create_default_context()
+            with socket.create_connection((host,443),timeout=5) as sock:
+                with ctx.wrap_socket(sock,server_hostname=host) as ss:
+                    tls = {"version":ss.version(),"cipher":ss.cipher()[0] if ss.cipher() else None}
+        except Exception as e:
+            tls = {"error":type(e).__name__}
+        files = {}
+        for path in ("/robots.txt","/sitemap.xml","/llms.txt"):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(f"https://{host}{path}",headers={"User-Agent":"Auto-Earner/3.0"}),timeout=5) as resp:
+                    files[path] = resp.status == 200
+            except Exception:
+                files[path] = False
+        return jsonify(ok=True,result={"company":extract(url),"domain":{"host":host,"addresses":addresses[:20],"http_status":status,"security_headers":headers,"tls":tls,"public_files":files}},generated_at=int(time.time()))
+    except Exception as e:
+        return jsonify(ok=False,error=str(e)[:120]),400
+
+@app.get("/.well-known/x402-catalog.json")
+def x402_catalog():
+    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"}])
+
 PAY_TO = os.getenv("PAY_TO", "")
 NETWORK = "eip155:8453"
 if not PAY_TO:
@@ -155,6 +202,12 @@ _routes = {
         description="Company website intelligence: metadata, contacts, social links and technology hints",
         mime_type="application/json",
         resource=os.getenv("PUBLIC_URL", "https://auto-earner.onrender.com/v1/company"),
+    ),
+    "POST /v1/domain-intelligence": RouteConfig(
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DOMAIN_PRICE, network=NETWORK)],
+        description="Full company and domain due-diligence intelligence including DNS, TLS, security headers and agent accessibility",
+        mime_type="application/json",
+        resource=os.getenv("PUBLIC_URL_DOMAIN", "https://auto-earner.onrender.com/v1/domain-intelligence"),
     ),
     "POST /v1/company/batch": RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + BATCH_PRICE, network=NETWORK)],
