@@ -12,3 +12,5 @@ services:
         sync: false
       - key: PRICE_USDC
         value: "0.01"
+
+# deploy trigger 2026-09-20T19:39Z
