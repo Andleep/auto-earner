@@ -208,6 +208,10 @@ def openapi():
         "/v1/full-intelligence":paid("0.05","Full Company Domain Due Diligence",url_schema)
     },"components":{"schemas":{"PaymentRequired":{"type":"object"}},"securitySchemes":{"x402":{"type":"apiKey","in":"header","name":"PAYMENT-SIGNATURE"}}},"x-discovery":{"ownershipProofs":[PAY_TO]}})
 
+@app.get("/.well-known/402index-verify.txt")
+def _402index_verify():
+    return "b1624c9a5124e20ac24622b3b18c618876e7524cbf4363d8b0aade04778b7b7a\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
+
 @app.get("/.well-known/x402")
 def well_known_x402():
     return jsonify({"x402Version":2,"resources":[
