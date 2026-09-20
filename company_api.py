@@ -189,15 +189,15 @@ def full_intelligence():
 @app.get("/openapi.json")
 def openapi():
     def paid(price, summary, schema):
-        return {"post":{"summary":summary,"operationId":summary.lower().replace(" ","_"),"security":[],"x-payment-info":{"price":f"${price}","protocols":[{"x402":{}}]},"requestBody":{"required":True,"content":{"application/json":{"schema":schema}}},"responses":{"402":{"description":"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}},"200":{"description":"Paid JSON result","content":{"application/json":{"schema":{"type":"object"}}}}}}}
+        return {"post":{"summary":summary,"operationId":summary.lower().replace(" ","_"),"security":[],"x-payment-info":{"price":{"mode":"fixed","currency":"USD","amount":price},"protocols":["x402"]},"requestBody":{"required":True,"content":{"application/json":{"schema":schema}}},"responses":{"402":{"description":"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}},"200":{"description":"Paid JSON result","content":{"application/json":{"schema":{"type":"object"}}}}}}}
     url_schema={"type":"object","required":["url"],"properties":{"url":{"type":"string","format":"uri","description":"Public company or domain URL"}}}
     batch_schema={"type":"object","required":["urls"],"properties":{"urls":{"type":"array","maxItems":5,"items":{"type":"string","format":"uri"}}}}
-    return jsonify({"openapi":"3.1.0","info":{"title":"Auto-Earner Agent Intelligence API","version":"4.0","description":"Machine-payable company, domain and due-diligence intelligence for AI agents. Returns structured JSON over x402 USDC on Base."},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{
+    return jsonify({"openapi":"3.1.0","info":{"title":"Auto-Earner Agent Intelligence API","version":"4.0","description":"Machine-payable company, domain and due-diligence intelligence for AI agents. Returns structured JSON over x402 USDC on Base. Built for vendor screening, lead enrichment, website audits and agent workflows."},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{
         "/v1/company":paid("0.01","Company Intelligence",url_schema),
         "/v1/company/batch":paid("0.03","Batch Company Intelligence",batch_schema),
         "/v1/domain-intelligence":paid("0.03","Domain Intelligence",url_schema),
         "/v1/full-intelligence":paid("0.10","Full Company Domain Due Diligence",url_schema)
-    },"components":{"schemas":{"PaymentRequired":{"type":"object"}}}})
+    },"components":{"schemas":{"PaymentRequired":{"type":"object"}},"securitySchemes":{"x402":{"type":"apiKey","in":"header","name":"PAYMENT-SIGNATURE"}}},"x-discovery":{"ownershipProofs":[PAY_TO]}})
 
 @app.get("/.well-known/x402")
 def well_known_x402():
@@ -210,7 +210,7 @@ def well_known_x402():
 
 @app.get("/.well-known/agent.json")
 def agent_card():
-    return jsonify({"name":"Auto-Earner Agent Intelligence","description":"Pay-per-call company and domain intelligence for AI agents: metadata, contacts, social, technology, DNS, TLS, security headers and risk signals.","url":"https://auto-earner.onrender.com","capabilities":["company_intelligence","domain_intelligence","due_diligence","dns","security","agent_discovery"],"payment":{"protocol":"x402","network":"eip155:8453","asset":"USDC","payTo":PAY_TO},"endpoints":["/v1/company","/v1/company/batch","/v1/domain-intelligence","/v1/full-intelligence"]})
+    return jsonify({"name":"Auto-Earner Agent Intelligence","description":"Pay-per-call company and domain intelligence for AI agents: metadata, contacts, social, technology, DNS, TLS, security headers and risk signals.","url":"https://auto-earner.onrender.com","capabilities":["company_intelligence","lead_enrichment","domain_intelligence","due_diligence","dns","security","agent_discovery"],"payment":{"protocol":"x402","network":"eip155:8453","asset":"USDC","payTo":PAY_TO},"endpoints":["/v1/company","/v1/company/batch","/v1/domain-intelligence","/v1/full-intelligence"]})
 
 @app.get("/llms.txt")
 def llms():
