@@ -16,6 +16,7 @@ PRICE = os.getenv("PRICE_USDC", "0.01")
 BATCH_PRICE = os.getenv("BATCH_PRICE_USDC", "0.03")
 DOMAIN_PRICE = os.getenv("DOMAIN_PRICE_USDC", "0.03")
 FULL_PRICE = os.getenv("FULL_PRICE_USDC", "0.05")
+DECISION_PRICE = os.getenv("DECISION_PRICE_USDC", "0.10")
 _cache = {}
 _lock = threading.Lock()
 
@@ -128,14 +129,14 @@ def dns_intelligence(host):
 
 @app.get("/")
 def home():
-    return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Company Intelligence API for AI Agents</title><meta name="description" content="Pay-per-request company research, lead enrichment and domain due diligence for AI agents. x402 USDC on Base."><style>body{font-family:system-ui,-apple-system,sans-serif;max-width:920px;margin:auto;padding:28px;line-height:1.55;color:#17202a}h1{font-size:42px;line-height:1.05}h2{margin-top:34px}.hero{padding:24px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.card{border:1px solid #ddd;border-radius:12px;padding:16px}.price{font-size:24px;font-weight:700}code,pre{background:#f4f4f4;padding:3px 6px;border-radius:5px}a{color:#0759c9}</style></head><body><section class="hero"><p>⚡ x402 • Base • USDC</p><h1>Company intelligence built for AI agents.</h1><p>Give your agent structured company and domain intelligence on demand. No subscription, no API key, pay only when an agent calls.</p></section><h2>Use cases</h2><div class="grid"><div class="card"><b>Lead enrichment</b><br>Find public contacts, social profiles and technology signals.</div><div class="card"><b>Vendor screening</b><br>Inspect company websites and domain configuration.</div><div class="card"><b>Due diligence</b><br>Combine company, DNS, TLS and security signals.</div><div class="card"><b>Agent research</b><br>Machine-readable JSON with x402 payment terms.</div></div><h2>Pay-per-call endpoints</h2><div class="grid"><div class="card"><code>POST /v1/company</code><div class="price">$0.01</div>Quick company intelligence</div><div class="card"><code>POST /v1/company/batch</code><div class="price">$0.03</div>Up to 5 companies</div><div class="card"><code>POST /v1/domain-intelligence</code><div class="price">$0.03</div>DNS + TLS + security</div><div class="card"><code>POST /v1/full-intelligence</code><div class="price">$0.05</div>Full due diligence</div></div><h2>Agent discovery</h2><p><a href="/openapi.json">OpenAPI</a> · <a href="/.well-known/x402">x402 resources</a> · <a href="/.well-known/agent.json">Agent card</a> · <a href="/llms.txt">llms.txt</a> · <a href="/.well-known/x402-catalog.json">x402 catalog</a></p><h2>Example request</h2><pre>POST /v1/company
+    return """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Company Intelligence API for AI Agents</title><meta name="description" content="Pay-per-request company research, lead enrichment and domain due diligence for AI agents. x402 USDC on Base."><style>body{font-family:system-ui,-apple-system,sans-serif;max-width:920px;margin:auto;padding:28px;line-height:1.55;color:#17202a}h1{font-size:42px;line-height:1.05}h2{margin-top:34px}.hero{padding:24px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.card{border:1px solid #ddd;border-radius:12px;padding:16px}.price{font-size:24px;font-weight:700}code,pre{background:#f4f4f4;padding:3px 6px;border-radius:5px}a{color:#0759c9}</style></head><body><section class="hero"><p>⚡ x402 • Base • USDC</p><h1>Company intelligence built for AI agents.</h1><p>Give your agent structured company and domain intelligence on demand. No subscription, no API key, pay only when an agent calls.</p></section><h2>Use cases</h2><div class="grid"><div class="card"><b>Lead enrichment</b><br>Find public contacts, social profiles and technology signals.</div><div class="card"><b>Vendor screening</b><br>Inspect company websites and domain configuration.</div><div class="card"><b>Due diligence</b><br>Combine company, DNS, TLS and security signals.</div><div class="card"><b>Agent research</b><br>Machine-readable JSON with x402 payment terms.</div></div><h2>Pay-per-call endpoints</h2><div class="grid"><div class="card"><code>POST /v1/company</code><div class="price">$0.01</div>Quick company intelligence</div><div class="card"><code>POST /v1/company/batch</code><div class="price">$0.03</div>Up to 5 companies</div><div class="card"><code>POST /v1/domain-intelligence</code><div class="price">$0.03</div>DNS + TLS + security</div><div class="card"><code>POST /v1/full-intelligence</code><div class="price">$0.05</div>Full due diligence</div><div class="card"><code>POST /v1/decision-report</code><div class="price">$0.10</div>Agent-ready decision report</div></div><h2>Agent discovery</h2><p><a href="/openapi.json">OpenAPI</a> · <a href="/.well-known/x402">x402 resources</a> · <a href="/.well-known/agent.json">Agent card</a> · <a href="/llms.txt">llms.txt</a> · <a href="/.well-known/x402-catalog.json">x402 catalog</a></p><h2>Example request</h2><pre>POST /v1/company
 Content-Type: application/json
 
 {"url":"https://example.com"}</pre><p>The API responds with HTTP 402 and machine-readable x402 payment terms. After payment, the agent receives the JSON intelligence report.</p><h2>Why x402?</h2><p>Agents can discover, pay and use the service in one automated flow. This is designed for machine customers rather than a traditional human checkout.</p></body></html>""", 200, {"Content-Type":"text/html; charset=utf-8"}
 
 @app.get("/health")
 def health():
-    return jsonify(ok=True, service="company-intelligence", version="4.0")
+    return jsonify(ok=True, service="company-intelligence", version="5.0", products=["company","batch","domain","full","decision_report"])
 
 @app.post("/v1/company")
 def company():
@@ -190,17 +191,60 @@ def full_intelligence():
     except Exception as e:
         return jsonify(ok=False,error=str(e)[:120]),400
 
+@app.post("/v1/decision-report")
+def decision_report():
+    data = request.get_json(silent=True) or {}
+    url = str(data.get("url", "")).strip()
+    if not url:
+        return jsonify(error="url_required"), 400
+    try:
+        response = full_intelligence()
+        payload = response.get_json()
+        if not isinstance(payload, dict) or not payload.get("ok"):
+            return response
+        report = payload.get("result", {})
+        risk = report.get("risk_signals", {})
+        missing = []
+        if risk.get("missing_https"):
+            missing.append("HTTPS")
+        if risk.get("missing_spf"):
+            missing.append("SPF")
+        if risk.get("missing_dmarc"):
+            missing.append("DMARC")
+        missing_headers = risk.get("missing_security_headers") or []
+        missing.extend(missing_headers)
+        domain = report.get("domain", {})
+        tls = domain.get("tls", {})
+        decision = {
+            "target": url,
+            "company": report.get("company", {}),
+            "domain": {"host": domain.get("host"), "http_status": domain.get("http_status")},
+            "risk_summary": {
+                "risk_signal_count": len(missing),
+                "missing_controls": missing,
+                "tls_version": tls.get("version"),
+                "security_headers_present": sorted((domain.get("security_headers") or {}).keys()),
+            },
+            "agent_recommendation": "review" if missing else "low_signal",
+            "recommendation_basis": "Automated public-signal screening only; not a legal, financial, security or identity guarantee.",
+            "report_type": "agent_ready_company_decision_report"
+        }
+        return jsonify(ok=True, result=decision, generated_at=int(time.time()))
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)[:120]), 400
+
 @app.get("/openapi.json")
 def openapi():
     def paid(price, summary, schema):
         return {"post":{"summary":summary,"operationId":summary.lower().replace(" ","_"),"security":[{"x402":[]}],"x-payment-info":{"pricingMode":"fixed","price":{"mode":"fixed","currency":"USD","amount":price},"protocols":["x402"]},"requestBody":{"required":True,"content":{"application/json":{"schema":schema}}},"responses":{"402":{"description":"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}},"200":{"description":"Paid JSON result","content":{"application/json":{"schema":{"type":"object"}}}}}}}
     url_schema={"type":"object","required":["url"],"properties":{"url":{"type":"string","format":"uri","description":"Public company or domain URL"}}}
     batch_schema={"type":"object","required":["urls"],"properties":{"urls":{"type":"array","maxItems":5,"items":{"type":"string","format":"uri"}}}}
-    return jsonify({"openapi":"3.1.0","info":{"title":"Auto-Earner Agent Intelligence API","version":"4.0","description":"Machine-payable company, domain and due-diligence intelligence for AI agents. Returns structured JSON over x402 USDC on Base. Built for vendor screening, lead enrichment, website audits and agent workflows."},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{
+    return jsonify({"openapi":"3.1.0","info":{"title":"Auto-Earner Agent Intelligence API","version":"5.0","description":"Machine-payable company intelligence and due-diligence reports for AI agents. Structured public-signal screening over x402 USDC on Base, including contacts, technology, DNS, TLS, mail security and risk controls."},"servers":[{"url":"https://auto-earner.onrender.com"}],"paths":{
         "/v1/company":paid("0.01","Company Intelligence",url_schema),
         "/v1/company/batch":paid("0.03","Batch Company Intelligence",batch_schema),
         "/v1/domain-intelligence":paid("0.03","Domain Intelligence",url_schema),
-        "/v1/full-intelligence":paid("0.05","Full Company Domain Due Diligence",url_schema)
+        "/v1/full-intelligence":paid("0.05","Full Company Domain Due Diligence",url_schema),
+        "/v1/decision-report":paid("0.10","Agent Ready Decision Report",url_schema)
     },"components":{"schemas":{"PaymentRequired":{"type":"object"}},"securitySchemes":{"x402":{"type":"apiKey","in":"header","name":"PAYMENT-SIGNATURE"}}},"x-discovery":{"ownershipProofs":[PAY_TO]}})
 
 @app.get("/.well-known/402index-verify.txt")
@@ -213,16 +257,17 @@ def well_known_x402():
         {"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":"$0.01","network":"eip155:8453","asset":"USDC","description":"Quick company website intelligence"},
         {"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"Batch intelligence for up to five company URLs"},
         {"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"DNS, TLS, security and agent-accessibility intelligence"},
-        {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.05","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"}
+        {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.05","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"},
+        {"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":"$0.10","network":"eip155:8453","asset":"USDC","description":"Agent-ready decision report with consolidated risk controls"}
     ]}), 200
 
 @app.get("/.well-known/agent.json")
 def agent_card():
-    return jsonify({"name":"Auto-Earner Agent Intelligence","description":"Pay-per-call company and domain intelligence for AI agents: metadata, contacts, social, technology, DNS, TLS, security headers and risk signals.","url":"https://auto-earner.onrender.com","capabilities":["company_intelligence","lead_enrichment","domain_intelligence","due_diligence","dns","security","agent_discovery"],"payment":{"protocol":"x402","network":"eip155:8453","asset":"USDC","payTo":PAY_TO},"endpoints":["/v1/company","/v1/company/batch","/v1/domain-intelligence","/v1/full-intelligence"]})
+    return jsonify({"name":"Auto-Earner Agent Intelligence","description":"Pay-per-call company and domain intelligence for AI agents: metadata, contacts, social, technology, DNS, TLS, security headers and risk signals.","url":"https://auto-earner.onrender.com","capabilities":["company_intelligence","lead_enrichment","domain_intelligence","due_diligence","dns","security","agent_discovery"],"payment":{"protocol":"x402","network":"eip155:8453","asset":"USDC","payTo":PAY_TO},"endpoints":["/v1/company","/v1/company/batch","/v1/domain-intelligence","/v1/full-intelligence","/v1/decision-report"]})
 
 @app.get("/llms.txt")
 def llms():
-    return "# Auto-Earner Agent Intelligence\n\nMachine-payable company and domain due diligence for AI agents.\n\n- POST /v1/company — $0.01 quick company intelligence\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — DNS, TLS, security and agent-accessibility report, $0.03\n- POST /v1/full-intelligence — full company/domain due diligence with risk signals, $0.05\n- GET /openapi.json — machine-readable API description\n- GET /.well-known/x402-catalog.json — x402 resource catalogue\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
+    return "# Auto-Earner Agent Intelligence\n\nMachine-payable company and domain due diligence for AI agents.\n\n- POST /v1/company — $0.01 quick company intelligence\n- POST /v1/company/batch — up to 5 URLs, $0.03\n- POST /v1/domain-intelligence — DNS, TLS, security and agent-accessibility report, $0.03\n- POST /v1/full-intelligence — full company/domain due diligence with risk signals, $0.05\n- POST /v1/decision-report — agent-ready consolidated decision report, $0.10\n- GET /openapi.json — machine-readable API description\n- GET /.well-known/x402-catalog.json — x402 resource catalogue\n\nPayment: x402 exact, Base mainnet, USDC.\n", 200, {"Content-Type":"text/plain; charset=utf-8"}
 
 @app.post("/v1/domain-intelligence")
 def domain_intelligence_endpoint():
@@ -310,6 +355,15 @@ _routes = {
         service_name="Company Intelligence",
         tags=["company","lead-enrichment","due-diligence","domain"],
         resource=os.getenv("PUBLIC_URL_FULL", "https://auto-earner.onrender.com/v1/full-intelligence"),
+    ),
+    "POST /v1/decision-report": RouteConfig(
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DECISION_PRICE, network=NETWORK)],
+        description="Agent-ready decision report consolidating company, domain and public security risk signals",
+        extensions=bazaar_ext("company"),
+        mime_type="application/json",
+        service_name="Company Intelligence",
+        tags=["company","lead-enrichment","due-diligence","decision","domain"],
+        resource=os.getenv("PUBLIC_URL_DECISION", "https://auto-earner.onrender.com/v1/decision-report"),
     )
 }
 payment_middleware(app, routes=_routes, server=_server)
