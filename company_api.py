@@ -303,12 +303,13 @@ def domain_intelligence_endpoint():
     except Exception as e:
         return jsonify(ok=False,error=str(e)[:120]),400
 
-@app.get("/.well-known/x402-catalog.json")
-def x402_catalog():
-    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":FULL_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":DECISION_PRICE,"network":"eip155:8453","currency":"USDC"}],"ownershipProofs":[PAY_TO])
-
 PAY_TO = os.getenv("PAY_TO", "")
 NETWORK = "eip155:8453"
+
+@app.get("/.well-known/x402-catalog.json")
+def x402_catalog():
+    resources = [{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":NETWORK,"currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":NETWORK,"currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":NETWORK,"currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":FULL_PRICE,"network":NETWORK,"currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":DECISION_PRICE,"network":NETWORK,"currency":"USDC"}]
+    return jsonify(resources=resources, ownershipProofs=[PAY_TO])
 if not PAY_TO:
     raise RuntimeError("PAY_TO environment variable is required")
 print("X402_BOOT_1", flush=True)
