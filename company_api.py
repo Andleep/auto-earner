@@ -99,7 +99,7 @@ def extract(url):
 
 def bazaar_ext(kind):
     schemas = {
-        "company": ({"url": "https://example.com"}, {"properties": {"url": {"type": "string", "format": "uri", "description": "Public company website URL to analyze"}}, "required": ["url"]}),
+        "company": ({"url": "https://example.com"}, {"type": "object", "properties": {"url": {"type": "string", "format": "uri", "description": "Public company website URL to analyze"}}, "required": ["url"]}),
         "batch": ({"urls": ["https://example.com", "https://example.org"]}, {"type": "object", "properties": {"urls": {"type": "array", "maxItems": 5, "items": {"type": "string", "format": "uri"}}}, "required": ["urls"]}),
     }
     sample, schema = schemas["batch" if kind == "batch" else "company"]
@@ -253,13 +253,13 @@ def _402index_verify():
 
 @app.get("/.well-known/x402")
 def well_known_x402():
-    return jsonify({"x402Version":2,"resources":[
+    return jsonify({"version":1,"resources":[
         {"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":"$0.01","network":"eip155:8453","asset":"USDC","description":"Quick company website intelligence"},
         {"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"Batch intelligence for up to five company URLs"},
         {"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"DNS, TLS, security and agent-accessibility intelligence"},
         {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.05","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"},
         {"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":"$0.10","network":"eip155:8453","asset":"USDC","description":"Agent-ready decision report with consolidated risk controls"}
-    ]}), 200
+    ],"ownershipProofs":[PAY_TO]}), 200
 
 @app.get("/.well-known/agent.json")
 def agent_card():
@@ -305,7 +305,7 @@ def domain_intelligence_endpoint():
 
 @app.get("/.well-known/x402-catalog.json")
 def x402_catalog():
-    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":FULL_PRICE,"network":"eip155:8453","currency":"USDC"}])
+    return jsonify(resources=[{"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":BATCH_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":DOMAIN_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":FULL_PRICE,"network":"eip155:8453","currency":"USDC"},{"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":DECISION_PRICE,"network":"eip155:8453","currency":"USDC"}],"ownershipProofs":[PAY_TO])
 
 PAY_TO = os.getenv("PAY_TO", "")
 NETWORK = "eip155:8453"
