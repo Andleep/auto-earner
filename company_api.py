@@ -82,7 +82,8 @@ class PinnedHTTPHandler(urllib.request.HTTPHandler):
 
 class PinnedHTTPSHandler(urllib.request.HTTPSHandler):
     def https_open(self, req):
-        _, host, _, pinned_ip = _resolve_public_endpoint(req.full_url)
+        _, host, _, ips = _resolve_public_endpoint(req.full_url)
+        pinned_ip = ips[0]
         class Conn(_PinnedHTTPSConnection):
             def __init__(self, h, port=None, **kwargs):
                 super().__init__(h, port, pinned_ip=pinned_ip, **kwargs)
