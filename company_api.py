@@ -38,10 +38,22 @@ def safe_url(url):
         raise ValueError("dns_failed")
     return url
 
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Re-validate every redirect target to prevent redirect-based SSRF.
+        safe_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+def safe_open(req, timeout=TIMEOUT):
+    url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
+    safe_url(url)
+    opener = urllib.request.build_opener(SafeRedirectHandler())
+    return opener.open(req, timeout=timeout)
+
 def fetch(url):
     safe_url(url)
     req = urllib.request.Request(url, headers={"User-Agent":"Auto-Earner-Company-Intelligence/2.1"})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+    with safe_open(req, timeout=TIMEOUT) as r:
         data = r.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
             raise ValueError("response_too_large")
@@ -282,7 +294,7 @@ def domain_intelligence_endpoint():
         addresses = sorted(set(i[4][0] for i in socket.getaddrinfo(host, None)))
         headers = {}
         req = urllib.request.Request(url, headers={"User-Agent":"Auto-Earner-Domain-Intelligence/4.0"})
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with safe_open(req, timeout=TIMEOUT) as resp:
             headers = {k.lower(): v for k,v in resp.headers.items() if k.lower() in {"server","strict-transport-security","content-security-policy","x-content-type-options","x-frame-options","referrer-policy","permissions-policy"}}
             status = resp.status
         tls = {}
@@ -296,7 +308,7 @@ def domain_intelligence_endpoint():
         files = {}
         for path in ("/robots.txt","/sitemap.xml","/llms.txt"):
             try:
-                with urllib.request.urlopen(urllib.request.Request(f"https://{host}{path}",headers={"User-Agent":"Auto-Earner/3.0"}),timeout=5) as resp:
+                with safe_open(urllib.request.Request(f"https://{host}{path}",headers={"User-Agent":"Auto-Earner/3.0"}),timeout=5) as resp:
                     files[path] = resp.status == 200
             except Exception:
                 files[path] = False
