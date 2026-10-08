@@ -254,11 +254,11 @@ def _402index_verify():
 @app.get("/.well-known/x402")
 def well_known_x402():
     return jsonify({"version":1,"resources":[
-        {"resource":"https://auto-earner.onrender.com/v1/company","method":"POST","price":"$0.01","network":"eip155:8453","asset":"USDC","description":"Quick company website intelligence"},
-        {"resource":"https://auto-earner.onrender.com/v1/company/batch","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"Batch intelligence for up to five company URLs"},
-        {"resource":"https://auto-earner.onrender.com/v1/domain-intelligence","method":"POST","price":"$0.03","network":"eip155:8453","asset":"USDC","description":"DNS, TLS, security and agent-accessibility intelligence"},
-        {"resource":"https://auto-earner.onrender.com/v1/full-intelligence","method":"POST","price":"$0.05","network":"eip155:8453","asset":"USDC","description":"Full company and domain due-diligence report with risk signals"},
-        {"resource":"https://auto-earner.onrender.com/v1/decision-report","method":"POST","price":"$0.10","network":"eip155:8453","asset":"USDC","description":"Agent-ready decision report with consolidated risk controls"}
+        "https://auto-earner.onrender.com/v1/company",
+        "https://auto-earner.onrender.com/v1/company/batch",
+        "https://auto-earner.onrender.com/v1/domain-intelligence",
+        "https://auto-earner.onrender.com/v1/full-intelligence",
+        "https://auto-earner.onrender.com/v1/decision-report"
     ],"ownershipProofs":[PAY_TO]}), 200
 
 @app.get("/.well-known/agent.json")
