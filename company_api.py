@@ -27,12 +27,20 @@ def safe_url(url):
     p = urllib.parse.urlparse(url)
     if p.scheme not in ("http", "https") or not p.hostname:
         raise ValueError("only_http_https")
+    if p.username or p.password:
+        raise ValueError("userinfo_not_allowed")
+    if p.port is not None and not (0 < p.port <= 65535):
+        raise ValueError("invalid_port")
     host = p.hostname.strip("[]").lower()
-    if host == "localhost" or host.endswith(".local"):
+    if host == "localhost" or host.endswith(".local") or host.endswith(".internal"):
         raise ValueError("private_host_blocked")
     try:
-        for info in socket.getaddrinfo(host, None):
-            if not ipaddress.ip_address(info[4][0]).is_global:
+        infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80), type=socket.SOCK_STREAM)
+        if not infos:
+            raise ValueError("dns_failed")
+        for info in infos:
+            ip = ipaddress.ip_address(info[4][0])
+            if not ip.is_global:
                 raise ValueError("private_host_blocked")
     except socket.gaierror:
         raise ValueError("dns_failed")
