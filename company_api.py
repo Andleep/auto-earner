@@ -167,7 +167,11 @@ def company_batch():
     urls = data.get("urls")
     if not isinstance(urls, list) or not urls:
         return jsonify(error="urls_required"), 400
-    urls = [str(u).strip() for u in urls[:5] if str(u).strip()]
+    # The public contract says "up to 5". Reject oversized requests rather
+    # than silently dropping caller-supplied URLs.
+    if len(urls) > 5:
+        return jsonify(error="too_many_urls", max_items=5, requested=len(urls)), 400
+    urls = [str(u).strip() for u in urls if str(u).strip()]
     if not urls:
         return jsonify(error="urls_required"), 400
     results, errors = [], []
