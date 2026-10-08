@@ -48,7 +48,7 @@ def _resolve_public_endpoint(url):
             ips.append(str(ip))
     if not ips:
         raise ValueError("dns_failed")
-    return p, host, port, ips[0]
+    return p, host, port, ips
 
 def safe_url(url):
     _resolve_public_endpoint(url)
@@ -73,7 +73,8 @@ class _PinnedHTTPSConnection(__import__("http.client", fromlist=["HTTPSConnectio
 
 class PinnedHTTPHandler(urllib.request.HTTPHandler):
     def http_open(self, req):
-        _, host, _, pinned_ip = _resolve_public_endpoint(req.full_url)
+        _, host, _, ips = _resolve_public_endpoint(req.full_url)
+        pinned_ip = ips[0]
         class Conn(_PinnedHTTPConnection):
             def __init__(self, h, port=None, **kwargs):
                 super().__init__(h, port, pinned_ip=pinned_ip, **kwargs)
@@ -347,8 +348,9 @@ def domain_intelligence_endpoint():
     if not url:
         return jsonify(error="url_required"), 400
     try:
-        parsed, host, port, pinned_ip = _resolve_public_endpoint(url)
-        addresses = [pinned_ip]
+        parsed, host, port, ips = _resolve_public_endpoint(url)
+        pinned_ip = ips[0]
+        addresses = ips
         headers = {}
         req = urllib.request.Request(url, headers={"User-Agent":"Auto-Earner-Domain-Intelligence/4.0"})
         with safe_open(req, timeout=TIMEOUT) as resp:
@@ -357,7 +359,7 @@ def domain_intelligence_endpoint():
         tls = {}
         try:
             ctx = ssl.create_default_context()
-            with socket.create_connection((pinned_ip,443),timeout=5) as sock:
+            with socket.create_connection((pinned_ip, port if parsed.scheme == "https" else 443),timeout=5) as sock:
                 with ctx.wrap_socket(sock,server_hostname=host) as ss:
                     tls = {"version":ss.version(),"cipher":ss.cipher()[0] if ss.cipher() else None}
         except Exception as e:
