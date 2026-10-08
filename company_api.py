@@ -23,7 +23,7 @@ _lock = threading.Lock()
 def clean(s):
     return re.sub(r"\s+", " ", unescape(s or "")).strip()
 
-def safe_url(url):
+def _resolve_public_endpoint(url):
     p = urllib.parse.urlparse(url)
     if p.scheme not in ("http", "https") or not p.hostname:
         raise ValueError("only_http_https")
@@ -34,28 +34,74 @@ def safe_url(url):
     host = p.hostname.strip("[]").lower()
     if host == "localhost" or host.endswith(".local") or host.endswith(".internal"):
         raise ValueError("private_host_blocked")
+    port = p.port or (443 if p.scheme == "https" else 80)
     try:
-        infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80), type=socket.SOCK_STREAM)
-        if not infos:
-            raise ValueError("dns_failed")
-        for info in infos:
-            ip = ipaddress.ip_address(info[4][0])
-            if not ip.is_global:
-                raise ValueError("private_host_blocked")
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror:
         raise ValueError("dns_failed")
+    ips = []
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global:
+            raise ValueError("private_host_blocked")
+        if str(ip) not in ips:
+            ips.append(str(ip))
+    if not ips:
+        raise ValueError("dns_failed")
+    return p, host, port, ips[0]
+
+def safe_url(url):
+    _resolve_public_endpoint(url)
     return url
+
+class _PinnedHTTPConnection(__import__("http.client", fromlist=["HTTPConnection"]).HTTPConnection):
+    def __init__(self, host, port=None, *, pinned_ip, **kwargs):
+        self._pinned_ip = pinned_ip
+        super().__init__(host, port, **kwargs)
+
+    def _create_connection(self, address, timeout, source_address=None):
+        return socket.create_connection((self._pinned_ip, address[1]), timeout, source_address)
+
+class _PinnedHTTPSConnection(__import__("http.client", fromlist=["HTTPSConnection"]).HTTPSConnection):
+    def __init__(self, host, port=None, *, pinned_ip, **kwargs):
+        self._pinned_ip = pinned_ip
+        super().__init__(host, port, **kwargs)
+
+    def _create_connection(self, address, timeout, source_address=None):
+        # Keep self.host as the hostname so TLS SNI/certificate validation remains correct.
+        return socket.create_connection((self._pinned_ip, address[1]), timeout, source_address)
+
+class PinnedHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        _, host, _, pinned_ip = _resolve_public_endpoint(req.full_url)
+        class Conn(_PinnedHTTPConnection):
+            def __init__(self, h, port=None, **kwargs):
+                super().__init__(h, port, pinned_ip=pinned_ip, **kwargs)
+        return self.do_open(Conn, req)
+
+class PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        _, host, _, pinned_ip = _resolve_public_endpoint(req.full_url)
+        class Conn(_PinnedHTTPSConnection):
+            def __init__(self, h, port=None, **kwargs):
+                super().__init__(h, port, pinned_ip=pinned_ip, **kwargs)
+        return self.do_open(Conn, req)
 
 class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        # Re-validate every redirect target to prevent redirect-based SSRF.
-        safe_url(newurl)
+        # Re-validate every redirect target before the next connection is made.
+        _resolve_public_endpoint(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 def safe_open(req, timeout=TIMEOUT):
     url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
-    safe_url(url)
-    opener = urllib.request.build_opener(SafeRedirectHandler())
+    _resolve_public_endpoint(url)
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        SafeRedirectHandler(),
+        PinnedHTTPHandler(),
+        PinnedHTTPSHandler(),
+    )
     return opener.open(req, timeout=timeout)
 
 def fetch(url):
