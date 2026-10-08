@@ -347,9 +347,8 @@ def domain_intelligence_endpoint():
     if not url:
         return jsonify(error="url_required"), 400
     try:
-        parsed = urllib.parse.urlparse(safe_url(url))
-        host = parsed.hostname
-        addresses = sorted(set(i[4][0] for i in socket.getaddrinfo(host, None)))
+        parsed, host, port, pinned_ip = _resolve_public_endpoint(url)
+        addresses = [pinned_ip]
         headers = {}
         req = urllib.request.Request(url, headers={"User-Agent":"Auto-Earner-Domain-Intelligence/4.0"})
         with safe_open(req, timeout=TIMEOUT) as resp:
@@ -358,7 +357,7 @@ def domain_intelligence_endpoint():
         tls = {}
         try:
             ctx = ssl.create_default_context()
-            with socket.create_connection((host,443),timeout=5) as sock:
+            with socket.create_connection((pinned_ip,443),timeout=5) as sock:
                 with ctx.wrap_socket(sock,server_hostname=host) as ss:
                     tls = {"version":ss.version(),"cipher":ss.cipher()[0] if ss.cipher() else None}
         except Exception as e:
