@@ -177,7 +177,8 @@ def full_intelligence():
     try:
         parsed = urllib.parse.urlparse(safe_url(url))
         host = parsed.hostname
-        base = domain_intelligence_endpoint().get_json()
+        base_response = domain_intelligence_endpoint()
+        base = base_response[0].get_json() if isinstance(base_response, tuple) else base_response.get_json()
         result = base.get("result", {}) if isinstance(base, dict) else {}
         result["dns"] = dns_intelligence(host)
         result["report_type"] = "full_company_domain_due_diligence"
@@ -199,7 +200,7 @@ def decision_report():
         return jsonify(error="url_required"), 400
     try:
         response = full_intelligence()
-        payload = response.get_json()
+        payload = response[0].get_json() if isinstance(response, tuple) else response.get_json()
         if not isinstance(payload, dict) or not payload.get("ok"):
             return response
         report = payload.get("result", {})
