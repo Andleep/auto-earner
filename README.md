@@ -69,3 +69,31 @@ Render auto-deploy is configured for the `main` branch after GitHub CI checks pa
 The service analyzes public web signals only. Decision reports are automated screening outputs, not legal, financial, identity or security guarantees.
 
 Unpaid requests to paid routes must return HTTP 402 with machine-readable Base USDC x402 requirements.
+
+## Best-fit buyers and workflows
+
+Auto-Earner is intended for software agents and developers that need a compact first-pass view of a public company website or domain. It is not a substitute for authoritative company registries, a paid security audit, or professional due diligence.
+
+- **Lead enrichment:** collect website metadata, public contact emails and social links before manual verification.
+- **Vendor triage:** combine website, DNS, TLS and security-header signals to decide which vendors need deeper review.
+- **Agent research pipelines:** request JSON results without an account or long-term subscription, using x402 on Base.
+- **Batch screening:** submit up to five URLs in one request and inspect per-URL successes and errors.
+
+## Buyer integration checklist
+
+1. Read the live OpenAPI document and x402 catalogue before selecting a route.
+2. Send a request without payment only to inspect the current payment challenge; an HTTP 402 is not a completed purchase.
+3. Use an x402-compatible client and review the exact recipient, network, token and amount before authorizing a payment.
+4. After payment, require HTTP 200 and validate the returned JSON. Keep the payment receipt/transaction evidence separately from application logs.
+5. Verify important fields from primary sources. Extracted emails, technology hints and risk signals can be incomplete or misleading.
+
+## Commercial proof and reporting
+
+Keep these states separate in dashboards and public claims:
+
+- **Listed:** a marketplace record exists.
+- **Payable challenge:** an unpaid request returns a well-formed x402 challenge.
+- **Paid fulfillment:** an authorized paid request returns the advertised product.
+- **Settled revenue:** a confirmed payment reaches the configured recipient.
+
+Do not report directory listings, unpaid probes, test transactions, or HTTP 402 challenges as customers or revenue. Marketplace verification should use a marketplace/operator-funded canary where available; never spend an owner wallet without explicit approval.
