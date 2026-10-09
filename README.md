@@ -62,6 +62,8 @@ Health: `/health`
 
 Required environment variable: `PAY_TO`
 
+Render auto-deploy is configured for the `main` branch after GitHub CI checks pass. A successful CI run should trigger deployment automatically; confirm the resulting deployment in the Render service events.
+
 ## Safety
 
 The service analyzes public web signals only. Decision reports are automated screening outputs, not legal, financial, identity or security guarantees.
