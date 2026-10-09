@@ -29,12 +29,16 @@ def _resolve_public_endpoint(url):
         raise ValueError("only_http_https")
     if p.username or p.password:
         raise ValueError("userinfo_not_allowed")
-    if p.port is not None and not (0 < p.port <= 65535):
+    try:
+        parsed_port = p.port
+    except ValueError:
+        raise ValueError("invalid_port")
+    if parsed_port is not None and not (0 < parsed_port <= 65535):
         raise ValueError("invalid_port")
     host = p.hostname.strip("[]").lower()
     if host == "localhost" or host.endswith(".local") or host.endswith(".internal"):
         raise ValueError("private_host_blocked")
-    port = p.port or (443 if p.scheme == "https" else 80)
+    port = parsed_port or (443 if p.scheme == "https" else 80)
     try:
         infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror:
