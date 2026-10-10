@@ -34,6 +34,7 @@ An AI agent can inspect a public company website and receive structured JSON for
 - Agent card: https://auto-earner.onrender.com/.well-known/agent.json
 - LLM instructions: https://auto-earner.onrender.com/llms.txt
 - x402 catalog: https://auto-earner.onrender.com/.well-known/x402-catalog.json
+- PayAPI MCP marketplace discovery: https://payapi.market/mcp
 
 ## Payment
 
