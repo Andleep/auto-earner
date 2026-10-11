@@ -399,7 +399,7 @@ _server.register_extension(bazaar_resource_server_extension)
 print("X402_BOOT_4", flush=True)
 _routes = {
     "POST /v1/company": RouteConfig(
-        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK)],
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + PRICE, network=NETWORK, extra={"name": "USD Coin", "version": "2"})],
         description="Company website intelligence: metadata, contacts, social links and technology hints",
         extensions=bazaar_ext("company"),
         mime_type="application/json",
@@ -408,7 +408,7 @@ _routes = {
         resource=os.getenv("PUBLIC_URL", "https://auto-earner.onrender.com/v1/company"),
     ),
     "POST /v1/domain-intelligence": RouteConfig(
-        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DOMAIN_PRICE, network=NETWORK)],
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DOMAIN_PRICE, network=NETWORK, extra={"name": "USD Coin", "version": "2"})],
         description="Full company and domain due-diligence intelligence including DNS, TLS, security headers and agent accessibility",
         extensions=bazaar_ext("company"),
         mime_type="application/json",
@@ -417,7 +417,7 @@ _routes = {
         resource=os.getenv("PUBLIC_URL_DOMAIN", "https://auto-earner.onrender.com/v1/domain-intelligence"),
     ),
     "POST /v1/company/batch": RouteConfig(
-        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + BATCH_PRICE, network=NETWORK)],
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + BATCH_PRICE, network=NETWORK, extra={"name": "USD Coin", "version": "2"})],
         description="Batch company website intelligence for up to 5 URLs",
         extensions=bazaar_ext("batch"),
         mime_type="application/json",
@@ -426,7 +426,7 @@ _routes = {
         resource=os.getenv("PUBLIC_URL_BATCH", "https://auto-earner.onrender.com/v1/company/batch"),
     ),
     "POST /v1/full-intelligence": RouteConfig(
-        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + FULL_PRICE, network=NETWORK)],
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + FULL_PRICE, network=NETWORK, extra={"name": "USD Coin", "version": "2"})],
         description="Full company and domain due-diligence report with DNS, TLS, security headers and risk signals",
         extensions=bazaar_ext("company"),
         mime_type="application/json",
@@ -435,7 +435,7 @@ _routes = {
         resource=os.getenv("PUBLIC_URL_FULL", "https://auto-earner.onrender.com/v1/full-intelligence"),
     ),
     "POST /v1/decision-report": RouteConfig(
-        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DECISION_PRICE, network=NETWORK)],
+        accepts=[PaymentOption(scheme="exact", pay_to=PAY_TO, price="$" + DECISION_PRICE, network=NETWORK, extra={"name": "USD Coin", "version": "2"})],
         description="Agent-ready decision report consolidating company, domain and public security risk signals",
         extensions=bazaar_ext("company"),
         mime_type="application/json",
