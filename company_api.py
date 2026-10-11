@@ -390,7 +390,7 @@ def x402_catalog():
 if not PAY_TO:
     raise RuntimeError("PAY_TO environment variable is required")
 print("X402_BOOT_1", flush=True)
-_facilitator = HTTPFacilitatorClientSync({"url": "https://facilitator.openx402.ai"})
+_facilitator = HTTPFacilitatorClientSync({"url": os.getenv("X402_FACILITATOR_URL", "https://facilitator.xpay.sh")})
 print("X402_BOOT_2", flush=True)
 _server = x402ResourceServerSync(_facilitator)
 print("X402_BOOT_3", flush=True)
